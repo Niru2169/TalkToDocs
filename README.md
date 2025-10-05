@@ -4,13 +4,13 @@ A document-based Q&A system with note-taking capabilities using FAISS, Sentence 
 
 ## Features
 
-- 📄 **Document Processing**: Load and index documents (TXT, MD, PDF)
-- 🔍 **Semantic Search**: Find relevant information using FAISS and Sentence Transformers
-- 🎤 **Voice Input**: Record questions using Whisper transcription
-- 🤖 **AI Responses**: Generate answers using Ollama (Llama 3.2)
-- 🔊 **Text-to-Speech**: Hear responses with Kokoro TTS or fallback options
-- 📋 **Note Taking**: Create and save markdown notes from document content
-- 💬 **Two Modes**: Q&A mode for questions, Notes mode for creating structured notes
+-  **Document Processing**: Load and index documents (TXT, MD, PDF)
+-  **Semantic Search**: Find relevant information using FAISS and Sentence Transformers
+-  **Voice Input**: Record questions using Whisper transcription
+-  **AI Responses**: Generate answers using Ollama (Llama 3.2)
+-  **Text-to-Speech**: Hear responses with Kokoro TTS or fallback options
+-  **Note Taking**: Create and save markdown notes from document content
+-  **Two Modes**: Q&A mode for questions, Notes mode for creating structured notes
 
 ## Installation
 
@@ -26,12 +26,11 @@ pip install numpy sounddevice whisper sentence-transformers faiss-cpu pynput req
 # For PDF support
 pip install PyPDF2
 
-# For Kokoro TTS (preferred)
-pip install kokoro
+# For Piper TTS (preferred)
+pip install piper-tts
 
 # Fallback TTS options
 pip install pyttsx3
-# OR install piper-tts (separate installation)
 ```
 
 ### 2. Install Ollama
@@ -40,7 +39,7 @@ Download and install from: https://ollama.ai
 
 Then pull a model:
 ```powershell
-ollama pull llama3.2
+ollama pull gemma3:1b
 # OR use your installed model, e.g.:
 # ollama pull gemma3:1b
 ```
@@ -94,14 +93,16 @@ The codebase is modular and ready for Django integration:
 ### Core Modules
 
 ```
-repurposed/
+talktodocs/
 ├── config.py                  # Configuration settings
 ├── document_processor.py      # Document loading and FAISS indexing
 ├── audio_handler.py           # Audio recording and Whisper transcription
 ├── tts_handler.py             # Text-to-speech with multiple backends
 ├── llm_handler.py             # Ollama LLM integration
 ├── notes_manager.py           # Notes saving and management
+├── put-your-documents-here/   # place your documents here to read from it
 └── main.py                    # CLI application
+```
 ```
 
 ### Django Integration Plan
@@ -183,18 +184,3 @@ Response:
 ### Ollama Connection Error
 - Ensure Ollama is running: `ollama serve`
 - Check if model is installed: `ollama list`
-
-### TTS Not Working
-- Kokoro preferred: `pip install kokoro`
-- Fallback: `pip install pyttsx3`
-
-### PDF Loading Error
-- Install PyPDF2: `pip install PyPDF2`
-
-### Audio Recording Issues
-- Check microphone permissions
-- Verify `sounddevice` is installed correctly
-
-## License
-
-MIT License
