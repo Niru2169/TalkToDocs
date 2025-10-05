@@ -1,0 +1,11 @@
+numpy
+sounddevice
+openai-whisper
+sentence-transformers
+faiss-cpu
+pynput
+requests
+piper-tts
+
+# Optional dependencies
+PyPDF2  # For PDF support
