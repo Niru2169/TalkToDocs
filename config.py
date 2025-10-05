@@ -2,6 +2,7 @@
 Configuration for Document Q&A system
 """
 import os
+from pathlib import Path
 
 # Audio settings
 SAMPLE_RATE = 16000
@@ -14,11 +15,12 @@ OLLAMA_MODEL = "gemma3:1b"  # Use your installed model
 
 # FAISS settings
 FAISS_INDEX_PATH = "document_index.faiss"
+INDEX_METADATA_PATH = "document_index_info.json"
 CHUNK_SIZE = 500  # characters per chunk
 CHUNK_OVERLAP = 50
 
 # TTS settings (Piper)
-PIPER_MODEL_PATH = "en_GB-southern_english_female-low.onnx"
+PIPER_MODEL_PATH = str(Path(__file__).parent / "en_GB-southern_english_female-low.onnx")
 TTS_SPEED = 1.0
 
 # Notes settings

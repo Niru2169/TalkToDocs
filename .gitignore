@@ -1,3 +1,6 @@
 put-your-documents-here/
 en_GB-southern_english_female-low.onnx
 __pycache__/
+document_index.faiss
+document_index_metadata.pkl
+document_index_info.json

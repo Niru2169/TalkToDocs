@@ -4,6 +4,8 @@ CLI Application for Document Q&A and Note Taking
 """
 import os
 import sys
+import json
+import hashlib
 from pathlib import Path
 
 from config import *
@@ -30,6 +32,49 @@ class DocQAApp:
         self.notes_manager = None
         self.recording = False
         self.mode = "qa"  # "qa" or "notes"
+    
+    def get_file_hash(self, file_paths):
+        """Generate a hash for the given file(s) to track what was indexed"""
+        if isinstance(file_paths, str):
+            file_paths = [file_paths]
+        
+        # Sort paths for consistent hashing
+        sorted_paths = sorted(file_paths)
+        combined = "|".join(sorted_paths)
+        return hashlib.md5(combined.encode()).hexdigest()
+    
+    def save_index_metadata(self, file_paths):
+        """Save metadata about what was indexed"""
+        if isinstance(file_paths, str):
+            file_paths = [file_paths]
+        
+        metadata = {
+            "files": file_paths,
+            "file_hash": self.get_file_hash(file_paths)
+        }
+        
+        with open(INDEX_METADATA_PATH, 'w') as f:
+            json.dump(metadata, f, indent=2)
+    
+    def load_index_metadata(self):
+        """Load metadata about what was indexed"""
+        if not os.path.exists(INDEX_METADATA_PATH):
+            return None
+        
+        try:
+            with open(INDEX_METADATA_PATH, 'r') as f:
+                return json.load(f)
+        except:
+            return None
+    
+    def needs_reindex(self, file_paths):
+        """Check if documents need to be re-indexed"""
+        metadata = self.load_index_metadata()
+        if not metadata:
+            return True
+        
+        current_hash = self.get_file_hash(file_paths)
+        return metadata.get("file_hash") != current_hash
         
     def initialize(self):
         """Initialize all components"""
@@ -66,31 +111,45 @@ class DocQAApp:
         
         print("\n✅ Initialization complete!")
     
-    def load_document(self, file_path: str):
-        """Load and index a document"""
-        print(f"\n📄 Loading document: {file_path}")
+    def load_documents(self, file_paths):
+        """Load and index document(s)"""
+        if isinstance(file_paths, str):
+            file_paths = [file_paths]
         
-        # Check if index exists
+        print(f"\n📄 Loading {len(file_paths)} document(s)...")
+        for fp in file_paths:
+            print(f"  - {Path(fp).name}")
+        
+        # Check if we can reuse existing index
+        if os.path.exists(FAISS_INDEX_PATH) and not self.needs_reindex(file_paths):
+            print("\n✅ Found existing index for these documents.")
+            if self.doc_processor.load_index(FAISS_INDEX_PATH):
+                print("✅ Index loaded successfully!")
+                return True
+        
+        # Need to re-index
         if os.path.exists(FAISS_INDEX_PATH):
-            print("Found existing index. Load it? (y/n): ", end="")
-            choice = input().strip().lower()
-            if choice == 'y':
-                if self.doc_processor.load_index(FAISS_INDEX_PATH):
-                    print("✅ Index loaded successfully!")
-                    return True
+            print("\n⚠️  Different documents detected. Re-indexing...")
         
-        # Index the document
-        self.doc_processor.index_document(file_path)
+        # Index all documents
+        for i, file_path in enumerate(file_paths, 1):
+            print(f"\n[{i}/{len(file_paths)}] Indexing: {Path(file_path).name}")
+            if i == 1:
+                self.doc_processor.index_document(file_path)
+            else:
+                # For subsequent docs, we need to append to existing index
+                self.doc_processor.index_document(file_path)
         
         # Check if indexing was successful
         if self.doc_processor.index is None or self.doc_processor.index.ntotal == 0:
-            print("❌ Failed to index document. Please check the file and try again.")
+            print("❌ Failed to index documents. Please check the files and try again.")
             return False
         
-        # Save the index
+        # Save the index and metadata
         self.doc_processor.save_index(FAISS_INDEX_PATH)
+        self.save_index_metadata(file_paths)
         
-        print("✅ Document loaded and indexed!")
+        print("\n✅ Documents loaded and indexed!")
         return True
     
     def process_query(self, query: str):
@@ -262,6 +321,7 @@ def main():
             print("📚 Found documents in 'put-your-documents-here' folder:")
             for i, doc in enumerate(doc_files, 1):
                 print(f"  {i}. {doc.name}")
+            print(f"  {len(doc_files) + 1}. ALL documents (index all files)")
             print("  0. Enter custom path")
             
             while True:
@@ -269,11 +329,17 @@ def main():
                     choice = input("\nChoose document (number or 0 for custom): ").strip()
                     if choice == '0':
                         doc_path = input("📄 Enter document path: ").strip()
+                        selected_docs = [doc_path]
+                        break
+                    elif choice == str(len(doc_files) + 1):
+                        # Select all documents
+                        selected_docs = [str(doc) for doc in doc_files]
+                        print(f"\n✅ Selected all {len(selected_docs)} documents")
                         break
                     else:
                         idx = int(choice) - 1
                         if 0 <= idx < len(doc_files):
-                            doc_path = str(doc_files[idx])
+                            selected_docs = [str(doc_files[idx])]
                             break
                         else:
                             print("❌ Invalid choice. Try again.")
@@ -282,17 +348,21 @@ def main():
         else:
             print(f"\n📁 No documents found in '{docs_folder}' folder.")
             doc_path = input("📄 Enter document path (txt, md, or pdf): ").strip()
+            selected_docs = [doc_path]
     else:
         print(f"\n📁 '{docs_folder}' folder not found.")
         doc_path = input("📄 Enter document path (txt, md, or pdf): ").strip()
+        selected_docs = [doc_path]
     
-    if not os.path.exists(doc_path):
-        print(f"❌ File not found: {doc_path}")
-        return
+    # Check if all selected documents exist
+    for doc_path in selected_docs:
+        if not os.path.exists(doc_path):
+            print(f"❌ File not found: {doc_path}")
+            return
     
-    # Load document
-    if not app.load_document(doc_path):
-        print("❌ Failed to load document")
+    # Load documents
+    if not app.load_documents(selected_docs):
+        print("❌ Failed to load documents")
         return
     
     # Choose interface mode
