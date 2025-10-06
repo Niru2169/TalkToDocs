@@ -6,6 +6,8 @@ faiss-gpu
 pynput
 requests
 piper-tts
+beautifulsoup4
+lxml
 
 # Optional dependencies
 PyPDF2  # For PDF support

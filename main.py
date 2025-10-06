@@ -14,6 +14,7 @@ from audio_handler import AudioHandler
 from tts_handler import TTSHandler
 from llm_handler import LLMHandler
 from notes_manager import NotesManager
+from web_browser import WebBrowser
 
 # Import pynput only when needed for audio mode
 try:
@@ -30,6 +31,7 @@ class DocQAApp:
         self.tts_handler = None
         self.llm_handler = None
         self.notes_manager = None
+        self.web_browser = None
         self.recording = False
         self.mode = "qa"  # "qa" or "notes"
     
@@ -109,6 +111,11 @@ class DocQAApp:
         # Initialize notes manager
         self.notes_manager = NotesManager(NOTES_DIR)
         
+        # Initialize web browser
+        print("\n🌐 Initializing web browser...")
+        self.web_browser = WebBrowser(WEB_TIMEOUT, WEB_USER_AGENT)
+        print("✅ Web browser ready")
+        
         print("\n✅ Initialization complete!")
     
     def load_documents(self, file_paths):
@@ -157,6 +164,20 @@ class DocQAApp:
         if not query:
             return
         
+        # Check if query is a URL
+        if self.web_browser.is_valid_url(query):
+            self.process_web_query(query)
+            return
+        
+        # Check if query starts with "web:" or "browse:"
+        if query.lower().startswith("web:") or query.lower().startswith("browse:"):
+            url = query.split(":", 1)[1].strip()
+            if self.web_browser.is_valid_url(url):
+                self.process_web_query(url)
+            else:
+                print(f"❌ Invalid URL: {url}")
+            return
+        
         print(f"\n🔍 Searching document...")
         
         # Search for relevant context
@@ -191,6 +212,98 @@ class DocQAApp:
         
         # Speak response
         self.tts_handler.speak(response)
+    
+    def process_web_query(self, url: str):
+        """Process web URL query"""
+        print(f"\n🌐 Web browsing mode activated...")
+        
+        # Fetch and extract web content
+        web_data = self.web_browser.browse(url)
+        
+        if not web_data:
+            response = "I couldn't fetch or extract content from the URL."
+            print(f"\n💬 Response: {response}")
+            self.tts_handler.speak(response)
+            return
+        
+        # Create a temporary index for web content
+        print(f"\n📄 Indexing web content from: {web_data['title']}")
+        
+        # Save current index state
+        original_chunks = self.doc_processor.chunks
+        original_metadata = self.doc_processor.metadata
+        original_index = self.doc_processor.index
+        
+        # Create chunks from web content
+        self.doc_processor.chunks = self.doc_processor.chunk_text(web_data['text'])
+        self.doc_processor.metadata = [{
+            "source": url,
+            "title": web_data['title'],
+            "chunk_id": i
+        } for i in range(len(self.doc_processor.chunks))]
+        
+        # Generate embeddings for web content
+        print("Generating embeddings for web content...")
+        embeddings = self.doc_processor.model.encode(self.doc_processor.chunks, show_progress_bar=True)
+        
+        if embeddings.ndim == 1:
+            embeddings = embeddings.reshape(1, -1)
+        
+        # Create temporary index
+        dimension = embeddings.shape[1]
+        import faiss
+        temp_index = faiss.IndexFlatL2(dimension)
+        temp_index.add(embeddings.astype('float32'))
+        self.doc_processor.index = temp_index
+        
+        print(f"✅ Web content indexed: {temp_index.ntotal} chunks")
+        
+        # Ask user what they want to know about the web page
+        print("\n" + "=" * 60)
+        print(f"📄 Page Title: {web_data['title']}")
+        if web_data['description']:
+            print(f"📝 Description: {web_data['description'][:200]}...")
+        print("=" * 60)
+        
+        web_query = input("\n💬 What would you like to know about this page? (or press Enter for summary): ").strip()
+        
+        if not web_query:
+            web_query = "Summarize the main content of this page"
+        
+        # Search web content
+        results = self.doc_processor.search(web_query, top_k=3)
+        
+        if results:
+            context = "\n\n".join([chunk for chunk, dist, meta in results])
+            print(f"\n🤔 Generating response based on web content...")
+            
+            # Generate response
+            response = self.llm_handler.generate_response(context, web_query, mode=self.mode)
+            
+            print(f"\n{'📋' if self.mode == 'notes' else '💬'} Response:\n")
+            print("-" * 60)
+            print(response)
+            print("-" * 60)
+            
+            # Save notes if requested
+            if self.mode == "notes":
+                save = input("\n💾 Save this note? (y/n): ").strip().lower()
+                if save == 'y':
+                    title = input("Note title (or press Enter for auto): ").strip()
+                    if not title:
+                        title = web_data['title']
+                    self.notes_manager.save_note(response, title)
+            
+            # Speak response
+            self.tts_handler.speak(response)
+        else:
+            print("\n❌ Couldn't extract information from web content")
+        
+        # Restore original index
+        self.doc_processor.chunks = original_chunks
+        self.doc_processor.metadata = original_metadata
+        self.doc_processor.index = original_index
+        print("\n✅ Restored original document index")
     
     def on_press(self, key):
         """Handle key press"""
@@ -268,6 +381,8 @@ class DocQAApp:
         print("=" * 60)
         print("\nCommands:")
         print("  • Type your question")
+        print("  • Enter a URL to browse web content")
+        print("  • 'web: <url>' or 'browse: <url>' - Browse a specific URL")
         print("  • 'mode qa' or 'mode notes' - Switch modes")
         print("  • 'list' - List saved notes")
         print("  • 'quit' or 'exit' - Exit")

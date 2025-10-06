@@ -44,6 +44,12 @@ Then try:
 - "Make notes on popular algorithms"
 - "Summarize the applications section"
 
+### Web Browsing Mode
+- Enter a URL: `https://en.wikipedia.org/wiki/Machine_learning`
+- Or use prefix: `web: https://example.com/article`
+- Then ask questions about the web page content
+- Example: "Summarize the main points" or "What is mentioned about neural networks?"
+
 ## Interface Modes
 
 ### Text Mode (Recommended for Testing)
@@ -102,7 +108,8 @@ django_project/
 │   └── services/          # Import from repurposed/
 │       ├── document_processor.py
 │       ├── llm_handler.py
-│       └── notes_manager.py
+│       ├── notes_manager.py
+│       └── web_browser.py
 └── templates/
     └── docqa/
         ├── index.html
@@ -113,6 +120,7 @@ django_project/
 ### Key Endpoints (Planned)
 - `POST /api/documents/upload` - Upload and index document
 - `POST /api/query` - Ask questions
+- `POST /api/web/browse` - Browse and analyze web content
 - `GET /api/notes` - List notes
 - `POST /api/notes` - Create note
 - `WebSocket /ws/audio` - Real-time audio streaming
@@ -129,6 +137,7 @@ django_project/
 1. Add your documents to the `put-your-documents-here` folder
 2. Test with sample document
 3. Try your own documents (txt, md, pdf)
-4. Experiment with different query types
-5. Create and organize notes
-6. Customize models in `config.py`
+4. Browse and analyze web pages by entering URLs
+5. Experiment with different query types
+6. Create and organize notes
+7. Customize models in `config.py`

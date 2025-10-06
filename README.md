@@ -5,6 +5,7 @@ A document-based Q&A system with note-taking capabilities using FAISS, Sentence 
 ## Features
 
 -  **Document Processing**: Load and index documents (TXT, MD, PDF)
+-  **Web Browsing**: Browse and extract content from web pages
 -  **Semantic Search**: Find relevant information using FAISS and Sentence Transformers
 -  **Voice Input**: Record questions using Whisper transcription
 -  **AI Responses**: Generate answers using Ollama (Llama 3.2)
@@ -17,7 +18,7 @@ A document-based Q&A system with note-taking capabilities using FAISS, Sentence 
 ### 1. Install Dependencies
 
 ```powershell
-pip install numpy sounddevice whisper sentence-transformers faiss-cpu pynput requests
+pip install numpy sounddevice whisper sentence-transformers faiss-cpu pynput requests beautifulsoup4 lxml
 ```
 
 ### Optional Dependencies
@@ -84,6 +85,8 @@ Switch modes:
 - `mode qa` - Switch to Q&A mode
 - `mode notes` - Switch to notes mode
 - `list` - List all saved notes
+- Enter a URL (e.g., `https://example.com`) - Browse and analyze web content
+- `web: <url>` or `browse: <url>` - Explicitly browse a URL
 - `quit` or `exit` - Exit the application
 
 ## Architecture (Django-Ready)
@@ -100,6 +103,7 @@ talktodocs/
 ├── tts_handler.py             # Text-to-speech with multiple backends
 ├── llm_handler.py             # Ollama LLM integration
 ├── notes_manager.py           # Notes saving and management
+├── web_browser.py             # Web browsing and content extraction
 ├── put-your-documents-here/   # place your documents here to read from it
 └── main.py                    # CLI application
 ```
@@ -113,6 +117,7 @@ Each module can become a Django service:
 - `audio_handler.py` → WebSocket audio streaming
 - `llm_handler.py` → API endpoint for LLM queries
 - `notes_manager.py` → Notes CRUD API
+- `web_browser.py` → Web scraping and content extraction service
 
 Example Django views structure:
 ```python
@@ -151,6 +156,10 @@ CHANNELS = 1
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
+# Web browsing
+WEB_TIMEOUT = 10
+WEB_USER_AGENT = "Mozilla/5.0..."
+
 # Notes
 NOTES_DIR = "notes"
 ```
@@ -177,6 +186,19 @@ Response:
 
 ## Concept 2
 ...
+```
+
+### Web Browsing Mode
+```
+You: https://en.wikipedia.org/wiki/Artificial_intelligence
+
+🌐 Web browsing mode activated...
+✅ Extracted content from: Artificial intelligence - Wikipedia
+
+💬 What would you like to know about this page? 
+You: What is the definition of artificial intelligence?
+
+Response: Artificial intelligence (AI) is intelligence demonstrated by machines...
 ```
 
 ## Troubleshooting
