@@ -106,7 +106,10 @@ class DocQAApp:
         if self.llm_handler.check_connection():
             print(f"✅ Connected to Ollama ({OLLAMA_MODEL})")
         else:
-            print("⚠️  Warning: Ollama not running. Start it with: ollama serve")
+            print("❌ Ollama is not running or not accessible.")
+            print("💡 Please start Ollama with: ollama serve")
+            print("💡 Then pull the model with: ollama pull", OLLAMA_MODEL)
+            return False  # Return False to indicate initialization failed
         
         # Initialize notes manager
         self.notes_manager = NotesManager(NOTES_DIR)
@@ -117,6 +120,7 @@ class DocQAApp:
         print("✅ Web browser ready")
         
         print("\n✅ Initialization complete!")
+        return True
     
     def load_documents(self, file_paths):
         """Load and index document(s)"""
@@ -422,7 +426,9 @@ class DocQAApp:
 
 def main():
     app = DocQAApp()
-    app.initialize()
+    if not app.initialize():
+        print("\n❌ Initialization failed. Please fix the issues above and try again.")
+        return
     
     # Check for documents in put-your-documents-here folder
     docs_folder = "put-your-documents-here"
