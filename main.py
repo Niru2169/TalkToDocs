@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import hashlib
+import time
 from pathlib import Path
 
 from config import *
@@ -362,7 +363,7 @@ class DocQAApp:
         print("\nControls:")
         print("  • Hold SPACEBAR to record your question")
         print("  • Release to stop and process")
-        print("  • Press ESC to quit")
+        print("  • Press ESC or Ctrl+C to quit")
         print("\nCommands (type before recording):")
         print("  • 'mode qa' - Switch to Q&A mode (default)")
         print("  • 'mode notes' - Switch to notes mode")
@@ -372,14 +373,40 @@ class DocQAApp:
         print("\nMode:", "📋 NOTES" if self.mode == "notes" else "💬 Q&A")
         print()
         
-        # Start keyboard listener
+        # Start keyboard listener with interrupt handling
+        listener = None
         try:
-            with Listener(on_press=self.on_press, on_release=self.on_release) as listener:
-                listener.join()
+            listener = Listener(on_press=self.on_press, on_release=self.on_release)
+            listener.start()
+            
+            # Main loop to check for interrupts
+            while listener.is_alive():
+                try:
+                    # Check for KeyboardInterrupt more frequently
+                    import signal
+                    def signal_handler(signum, frame):
+                        raise KeyboardInterrupt
+                    
+                    # Set up signal handler for SIGINT (Ctrl+C)
+                    old_handler = signal.signal(signal.SIGINT, signal_handler)
+                    
+                    # Small delay while checking for interrupts
+                    time.sleep(0.1)
+                    
+                    # Restore original handler
+                    signal.signal(signal.SIGINT, old_handler)
+                    
+                except KeyboardInterrupt:
+                    print("\n👋 Keyboard interrupt detected. Exiting...")
+                    break
+                    
         except KeyboardInterrupt:
             print("\n👋 Keyboard interrupt detected. Exiting...")
         except Exception as e:
             print(f"\n❌ Listener error: {e}")
+        finally:
+            if listener:
+                listener.stop()
         
         print("\n👋 Goodbye!")
     

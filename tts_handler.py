@@ -121,10 +121,6 @@ class TTSHandler:
     def _speak_piper(self, text: str):
         """Speak using Piper"""
         try:
-            # Reset control flags
-            self.is_paused = False
-            self.should_stop = False
-            
             # Synthesize speech using generator
             audio_generator = self.tts_engine.synthesize(text)
             
@@ -148,43 +144,31 @@ class TTSHandler:
             # Concatenate all audio chunks
             audio = np.concatenate(audio_chunks)
             
-            # Play audio with pause/skip controls
-            self._play_audio_with_controls(audio, sample_rate)
+            # Play audio with skip control
+            self._play_audio_with_skip(audio, sample_rate)
             
         except Exception as e:
             print(f"❌ Piper TTS error: {type(e).__name__}: {e}")
     
-    def _play_audio_with_controls(self, audio: np.ndarray, sample_rate: int):
-        """Play audio with keyboard controls for pause/skip"""
+    def _play_audio_with_skip(self, audio: np.ndarray, sample_rate: int):
+        """Play audio with keyboard skip control"""
         try:
             # Import keyboard here to avoid import errors if not available
             import keyboard
             
-            print("🎵 Press 'k' to pause, SPACE to skip")
+            print("🎵 Press SPACE to skip")
             
             # Start audio playback
             sd.play(audio, samplerate=sample_rate)
             
             # Listen for keyboard input while playing
             while sd.get_stream().active:
-                if keyboard.is_pressed('k'):
-                    sd.stop()
-                    print("⏸️  Paused - Press SPACE to resume or wait to skip")
-                    
-                    # Wait for resume or skip
-                    while True:
-                        if keyboard.is_pressed('space'):
-                            print("▶️  Resumed")
-                            sd.play(audio, samplerate=sample_rate)
-                            break
-                        time.sleep(0.1)
-                    time.sleep(0.2)  # Debounce
-                    
-                elif keyboard.is_pressed('space'):
+                if keyboard.is_pressed('space'):
                     sd.stop()
                     print("⏭️  Skipped")
                     break
                 
+                import time
                 time.sleep(0.05)  # Small delay to prevent high CPU usage
             
             # Wait for any remaining playback to finish
