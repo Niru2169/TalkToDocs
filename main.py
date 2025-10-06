@@ -34,6 +34,7 @@ class DocQAApp:
         self.web_browser = None
         self.recording = False
         self.mode = "qa"  # "qa" or "notes"
+        self.use_tts = True  # Whether to use TTS for responses
     
     def get_file_hash(self, file_paths):
         """Generate a hash for the given file(s) to track what was indexed"""
@@ -190,7 +191,8 @@ class DocQAApp:
         if not results:
             response = "I couldn't find relevant information in the document."
             print(f"\n💬 Response: {response}")
-            self.tts_handler.speak(response)
+            if self.use_tts:
+                self.tts_handler.speak(response)
             return
         
         # Combine context
@@ -215,7 +217,8 @@ class DocQAApp:
                 self.notes_manager.save_note(response, title or None)
         
         # Speak response
-        self.tts_handler.speak(response)
+        if self.use_tts:
+            self.tts_handler.speak(response)
     
     def process_web_query(self, url: str):
         """Process web URL query"""
@@ -227,7 +230,8 @@ class DocQAApp:
         if not web_data:
             response = "I couldn't fetch or extract content from the URL."
             print(f"\n💬 Response: {response}")
-            self.tts_handler.speak(response)
+            if self.use_tts:
+                self.tts_handler.speak(response)
             return
         
         # Create a temporary index for web content
@@ -299,7 +303,8 @@ class DocQAApp:
                     self.notes_manager.save_note(response, title)
             
             # Speak response
-            self.tts_handler.speak(response)
+            if self.use_tts:
+                self.tts_handler.speak(response)
         else:
             print("\n❌ Couldn't extract information from web content")
         
@@ -494,8 +499,10 @@ def main():
     choice = input("Choice (1/2): ").strip()
     
     if choice == '1':
+        app.use_tts = True
         app.run_cli()
     else:
+        app.use_tts = False
         app.run_interactive()
 
 if __name__ == "__main__":
