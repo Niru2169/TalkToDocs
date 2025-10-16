@@ -117,10 +117,97 @@ class WebBrowser:
             "keywords": metadata.get("keywords", "")
         }
     
-    def search_web(self, query: str) -> str:
+    def search_web(self, query: str, num_results: int = 5) -> list:
         """
-        Simple web search simulation.
-        Note: This is a placeholder. For real web search, you would need
-        to integrate with a search API (Google Custom Search, Bing, etc.)
+        Perform web search using DuckDuckGo HTML search.
+        Returns a list of search results with title, url, and snippet.
+        
+        Args:
+            query: Search query string
+            num_results: Number of results to return (default 5)
+            
+        Returns:
+            List of dicts with 'title', 'url', and 'snippet' keys
         """
-        return f"Web search for '{query}' would require API integration with search engines like Google Custom Search or Bing."
+        try:
+            print(f"🔍 Searching the web for: {query}")
+            
+            # Use DuckDuckGo HTML search (no API key required)
+            search_url = "https://html.duckduckgo.com/html/"
+            params = {
+                'q': query
+            }
+            
+            response = self.session.post(search_url, data=params, timeout=self.timeout)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            results = []
+            # Find all search result divs
+            result_divs = soup.find_all('div', class_='result')
+            
+            for div in result_divs[:num_results]:
+                try:
+                    # Extract title and URL
+                    title_tag = div.find('a', class_='result__a')
+                    if not title_tag:
+                        continue
+                    
+                    title = title_tag.get_text().strip()
+                    url = title_tag.get('href', '')
+                    
+                    # Extract snippet
+                    snippet_tag = div.find('a', class_='result__snippet')
+                    snippet = snippet_tag.get_text().strip() if snippet_tag else ""
+                    
+                    if url and title:
+                        results.append({
+                            'title': title,
+                            'url': url,
+                            'snippet': snippet
+                        })
+                except Exception as e:
+                    continue
+            
+            print(f"✅ Found {len(results)} web search results")
+            return results
+            
+        except Exception as e:
+            print(f"❌ Error performing web search: {e}")
+            return []
+    
+    def fetch_and_extract_from_search_results(self, search_results: list, max_pages: int = 3) -> str:
+        """
+        Fetch and extract text content from search result URLs.
+        
+        Args:
+            search_results: List of search result dictionaries
+            max_pages: Maximum number of pages to fetch
+            
+        Returns:
+            Combined text from all fetched pages
+        """
+        combined_text = ""
+        successful_fetches = 0
+        
+        for i, result in enumerate(search_results[:max_pages]):
+            if successful_fetches >= max_pages:
+                break
+                
+            url = result['url']
+            print(f"\n📄 Fetching content from result {i+1}: {result['title'][:60]}...")
+            
+            web_data = self.browse(url)
+            if web_data and web_data['text']:
+                # Add metadata about the source
+                source_info = f"\n\n=== Source: {result['title']} ===\n"
+                source_info += f"URL: {url}\n"
+                source_info += f"Description: {result['snippet']}\n\n"
+                combined_text += source_info + web_data['text'][:2000] + "\n\n"  # Limit to 2000 chars per page
+                successful_fetches += 1
+            else:
+                print(f"⚠️  Failed to extract content from {url}")
+        
+        print(f"\n✅ Successfully fetched content from {successful_fetches} pages")
+        return combined_text

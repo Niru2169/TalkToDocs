@@ -189,21 +189,50 @@ class DocQAApp:
         # Search for relevant context
         results = self.doc_processor.search(query, top_k=3)
         
+        # Determine if results are relevant enough
+        use_web_search = False
         if not results:
-            response = "I couldn't find relevant information in the document."
-            print(f"\n💬 Response: {response}")
-            if self.use_tts:
-                self.tts_handler.speak(response)
+            print("⚠️  No relevant information found in document.")
+            use_web_search = True
+        else:
+            # Check if the results have good relevance scores
+            # Lower distance = better match. If all results have high distance (> 1.5), quality is poor
+            avg_distance = sum([dist for _, dist, _ in results]) / len(results)
+            if avg_distance > 1.5:
+                print(f"⚠️  Document search results have low relevance (score: {avg_distance:.2f}).")
+                use_web_search = True
+        
+        # If document search is insufficient, try web search
+        if use_web_search:
+            print("\n🌐 Falling back to web search...")
+            response = self.process_web_search_fallback(query)
+            
+            if response:
+                print(f"\n{'📋' if self.mode == 'notes' else '💬'} Response:\n")
+                print("-" * 60)
+                print(response)
+                print("-" * 60)
+                
+                # Save notes if in notes mode
+                if self.mode == "notes":
+                    save = input("\n💾 Save this note? (y/n): ").strip().lower()
+                    if save == 'y':
+                        title = input("Note title (or press Enter for auto): ").strip()
+                        self.notes_manager.save_note(response, title or None)
+                
+                # Speak response
+                if self.use_tts:
+                    self.tts_handler.speak(response)
             return
         
-        # Combine context
+        # Combine context from document
         context = "\n\n".join([chunk for chunk, dist, meta in results])
         
         print(f"📝 Found {len(results)} relevant chunks")
         print(f"🤔 Generating response...")
         
-        # Generate response
-        response = self.llm_handler.generate_response(context, query, mode=self.mode)
+        # Generate response from document
+        response = self.llm_handler.generate_response(context, query, mode=self.mode, source="document")
         
         print(f"\n{'📋' if self.mode == 'notes' else '💬'} Response:\n")
         print("-" * 60)
@@ -220,6 +249,46 @@ class DocQAApp:
         # Speak response
         if self.use_tts:
             self.tts_handler.speak(response)
+    
+    def process_web_search_fallback(self, query: str) -> str:
+        """
+        Perform web search and extract content from results as fallback
+        when document search yields no results.
+        
+        Args:
+            query: User's search query
+            
+        Returns:
+            Generated response based on web search results
+        """
+        # Perform web search
+        search_results = self.web_browser.search_web(query, num_results=5)
+        
+        if not search_results:
+            response = "I couldn't find relevant information in the document, and web search also returned no results."
+            return response
+        
+        # Display search results
+        print(f"\n📊 Top search results:")
+        for i, result in enumerate(search_results[:3], 1):
+            print(f"  {i}. {result['title']}")
+            print(f"     {result['url']}")
+            if result['snippet']:
+                print(f"     {result['snippet'][:100]}...")
+        
+        # Fetch and extract content from top results
+        web_content = self.web_browser.fetch_and_extract_from_search_results(search_results, max_pages=3)
+        
+        if not web_content or len(web_content.strip()) < 100:
+            response = "I couldn't find relevant information in the document, and failed to extract useful content from web search results."
+            return response
+        
+        print(f"\n🤔 Generating response from web content...")
+        
+        # Generate response using web content
+        response = self.llm_handler.generate_response(web_content, query, mode=self.mode, source="web")
+        
+        return response
     
     def process_web_query(self, url: str):
         """Process web URL query"""
@@ -309,7 +378,7 @@ class DocQAApp:
                 print(f"\n🤔 Generating response based on web content...")
                 
                 # Generate response
-                response = self.llm_handler.generate_response(context, web_query, mode=self.mode)
+                response = self.llm_handler.generate_response(context, web_query, mode=self.mode, source="document")
                 
                 print(f"\n{'📋' if self.mode == 'notes' else '💬'} Response:\n")
                 print("-" * 60)
