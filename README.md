@@ -5,6 +5,7 @@ A document-based Q&A system with note-taking capabilities using FAISS, Sentence 
 ## Features
 
 -  **Document Processing**: Load and index documents (TXT, MD, PDF)
+-  **PDF Image Support**: Extract and interpret text from images in PDFs using OCR
 -  **Web Browsing**: Browse and extract content from web pages
 -  **Semantic Search**: Find relevant information using FAISS and Sentence Transformers
 -  **Voice Input**: Record questions using Whisper transcription
@@ -24,7 +25,10 @@ pip install numpy sounddevice whisper sentence-transformers faiss-cpu pynput req
 ### Optional Dependencies
 
 ```powershell
-# For PDF support
+# For PDF support with image extraction (recommended)
+pip install PyMuPDF Pillow pytesseract
+
+# For basic PDF text support (fallback)
 pip install PyPDF2
 
 # For Piper TTS (preferred)
@@ -33,6 +37,11 @@ pip install piper-tts
 # Fallback TTS options
 pip install pyttsx3
 ```
+
+**Note for Image OCR**: If you want to extract text from images in PDFs, you also need to install Tesseract OCR on your system:
+- **Windows**: Download from https://github.com/UB-Mannheim/tesseract/wiki
+- **Ubuntu/Debian**: `sudo apt-get install tesseract-ocr`
+- **macOS**: `brew install tesseract`
 
 ### 2. Install Ollama
 
