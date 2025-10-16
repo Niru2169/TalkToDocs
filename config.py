@@ -10,7 +10,7 @@ CHANNELS = 1
 
 # Model paths and settings
 SENTENCE_TRANSFORMER_MODEL = "all-MiniLM-L6-v2"
-WHISPER_MODEL = "base"  # or "small", "medium", "large"
+WHISPER_MODEL = "large"  # or "small", "medium", "large"
 OLLAMA_MODEL = "gemma3:4b"  # Use your installed model
 
 # FAISS settings
@@ -26,6 +26,9 @@ TTS_SPEED = 1.0
 # Notes settings
 NOTES_DIR = "notes"
 NOTES_FORMAT = "markdown"
+
+# Q&A Session logging
+QA_LOG_FILE = "qa_session_log.txt"
 
 # Request timeout
 REQUEST_TIMEOUT = 60

@@ -5,65 +5,6 @@ import io
 import wave
 import numpy as np
 import sounddevice as sd
-from pathlib import Path
-
-class TTSHandler:
-    def __init__(self, model_path: str, speed: float = 1.0):
-        self.model_path = model_path
-        self.speed = speed
-        self.tts_engine = None
-        self._initialize_tts()
-    
-    def _initialize_tts(self):
-        """Initialize Piper TTS engine"""
-        try:
-            from piper.voice import PiperVoice
-            
-            model_path_obj = Path(self.model_path)
-            
-            if not model_path_obj.exists():
-                print(f"❌ Model file not found: {self.model_path}")
-                self.engine_type = None
-                return
-            
-            # Check for config file
-            config_path = model_path_obj.with_suffix('.onnx.json')
-            if not config_path.exists():
-                print(f"❌ Config file not found: {config_path}")
-                self.engine_type = None
-                return
-            
-            self.tts_engine = PiperVoice.load(self.model_path)
-            self.engine_type = "piper"
-            print("✅ Piper TTS initialized")
-            
-        except ImportError as e:
-            print(f"❌ piper-tts not installed: {e}")
-            print("💡 Install with: pip install piper-tts")
-            self.engine_type = None
-        except Exception as e:
-            print(f"❌ Failed to initialize Piper TTS: {type(e).__name__}: {e}")
-            self.engine_type = None
-    
-    def speak(self, text: str):
-        """Convert text to speech and play"""
-        if not text:
-            return
-        
-        print(f"🔊 Speaking: {text[:50]}...")
-        
-        if self.engine_type == "piper":
-            self._speak_piper(text)
-        else:
-            print("⚠️  TTS not available, text output only")
-    
-"""
-Text-to-Speech handler using Piper TTS
-"""
-import io
-import wave
-import numpy as np
-import sounddevice as sd
 import threading
 import time
 from pathlib import Path
@@ -111,7 +52,11 @@ class TTSHandler:
         if not text:
             return
         
-        print(f"🔊 Speaking: {text[:50]}...")
+        # Display the full text being spoken
+        print(f"\n🔊 Speaking:\n")
+        print("-" * 70)
+        print(text)
+        print("-" * 70)
         
         if self.engine_type == "piper":
             self._speak_piper(text)
@@ -156,7 +101,7 @@ class TTSHandler:
             # Import keyboard here to avoid import errors if not available
             import keyboard
             
-            print("🎵 Press SPACE to skip")
+            print("🎵 Press SPACE to skip\n")
             
             # Start audio playback
             sd.play(audio, samplerate=sample_rate)
@@ -165,10 +110,9 @@ class TTSHandler:
             while sd.get_stream().active:
                 if keyboard.is_pressed('space'):
                     sd.stop()
-                    print("⏭️  Skipped")
+                    print("⏭️  Skipped\n")
                     break
                 
-                import time
                 time.sleep(0.05)  # Small delay to prevent high CPU usage
             
             # Wait for any remaining playback to finish

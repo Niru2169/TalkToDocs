@@ -80,6 +80,27 @@ class DocQAApp:
         
         current_hash = self.get_file_hash(file_paths)
         return metadata.get("file_hash") != current_hash
+    
+    def log_qa_to_file(self, query: str, response: str, source: str = "document"):
+        """Append Q&A to session log file"""
+        try:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            log_entry = f"""
+{'='*70}
+[{timestamp}] Q&A Session Log
+{'='*70}
+📝 Question: {query}
+📌 Source: {source}
+💬 Answer: {response}
+{'='*70}
+
+"""
+            with open(QA_LOG_FILE, 'a', encoding='utf-8') as f:
+                f.write(log_entry)
+        except Exception as e:
+            print(f"⚠️  Could not save to log file: {e}")
         
     def initialize(self):
         """Initialize all components"""
@@ -201,6 +222,8 @@ class DocQAApp:
         if not results:
             response = "I couldn't find relevant information in the document."
             print(f"\n Response: {response}")
+            # Log to file even when no results
+            self.log_qa_to_file(query, response, source="document (no results)")
             if self.use_tts:
                 self.tts_handler.speak(response)
             return
@@ -218,6 +241,10 @@ class DocQAApp:
         print("-" * 60)
         print(response)
         print("-" * 60)
+        
+        # Log Q&A to file (only in QA mode, not notes mode)
+        if self.mode == "qa":
+            self.log_qa_to_file(query, response, source="document")
         
         # Save notes if in notes mode
         if self.mode == "notes":
@@ -241,6 +268,8 @@ class DocQAApp:
             if not search_results:
                 response = "No search results found."
                 print(f"\n💬 Response: {response}")
+                # Log to file even when no results
+                self.log_qa_to_file(search_query, response, source="web (no results)")
                 if self.use_tts:
                     self.tts_handler.speak(response)
                 return
@@ -277,6 +306,10 @@ Focus on: {search_query}"""
             print("-" * 60)
             print(response)
             print("-" * 60)
+            
+            # Log Q&A to file (only in QA mode, not notes mode)
+            if self.mode == "qa":
+                self.log_qa_to_file(search_query, response, source="web")
             
             # Save notes if in notes mode
             if self.mode == "notes":
