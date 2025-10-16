@@ -35,6 +35,7 @@ class DocumentProcessor:
             except ImportError:
                 ocr_available = False
                 print("  ⚠️  pytesseract not available. Image OCR will be skipped.")
+                print("     To enable OCR: Install Tesseract OCR system package, then: pip install pytesseract")
             
             doc = fitz.open(file_path)
             
@@ -140,8 +141,11 @@ class DocumentProcessor:
                     return '\n\n'.join(text)
                 except ImportError:
                     print("❌ Neither PyMuPDF nor PyPDF2 installed.")
-                    print("   For image support: pip install PyMuPDF Pillow pytesseract")
+                    print("   For image support with OCR:")
+                    print("     1. Install Tesseract OCR (system package)")
+                    print("     2. pip install PyMuPDF Pillow pytesseract")
                     print("   For basic PDF support: pip install PyPDF2")
+                    print("   See README.md for detailed installation instructions")
                     return ""
                 except Exception as e:
                     print(f"❌ Error reading PDF with PyPDF2: {e}")
