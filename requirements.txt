@@ -9,6 +9,5 @@ piper-tts
 beautifulsoup4
 lxml
 keyboard
-
-# Optional dependencies
 PyPDF2  # For PDF support
+pytesseract # For OCR
