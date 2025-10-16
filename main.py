@@ -175,13 +175,21 @@ class DocQAApp:
             self.process_web_query(query)
             return
         
-        # Check if query starts with "web:" or "browse:"
+        # Check if query starts with "web:" or "browse:" for explicit web search
         if query.lower().startswith("web:") or query.lower().startswith("browse:"):
-            url = query.split(":", 1)[1].strip()
-            if self.web_browser.is_valid_url(url):
-                self.process_web_query(url)
+            search_text = query.split(":", 1)[1].strip()
+            if self.web_browser.is_valid_url(search_text):
+                # It's a URL - browse it
+                self.process_web_query(search_text)
             else:
-                print(f"❌ Invalid URL: {url}")
+                # It's a search query - perform web search
+                self.perform_web_search(search_text)
+            return
+        
+        # Check if query starts with "search:" for explicit web search
+        if query.lower().startswith("search:"):
+            search_query = query.split(":", 1)[1].strip()
+            self.perform_web_search(search_query)
             return
         
         print(f"\n🔍 Searching document...")
@@ -220,6 +228,68 @@ class DocQAApp:
         # Speak response
         if self.use_tts:
             self.tts_handler.speak(response)
+    
+    def perform_web_search(self, search_query: str):
+        """Perform a web search and provide results"""
+        print(f"\n🔍 Searching the web for: {search_query}")
+        
+        try:
+            # Perform web search
+            search_results = self.web_browser.search_web(search_query, num_results=5)
+            
+            if not search_results:
+                response = "No search results found."
+                print(f"\n💬 Response: {response}")
+                if self.use_tts:
+                    self.tts_handler.speak(response)
+                return
+            
+            # Display top results
+            print(f"\n📊 Top results:")
+            for i, result in enumerate(search_results[:3], 1):
+                print(f"  {i}. {result['title']}")
+                if result['snippet']:
+                    print(f"     {result['snippet'][:150]}...")
+            
+            # Fetch and extract content from top result
+            print(f"\n📄 Fetching content from top result...")
+            web_content = self.web_browser.fetch_and_extract_from_search_results(search_results, max_pages=1)
+            
+            if not web_content or len(web_content.strip()) < 50:
+                # If can't fetch content, just provide snippet summary
+                snippets = [r['snippet'] for r in search_results[:2] if r['snippet']]
+                response = "\n".join(snippets) if snippets else "Could not extract content from search results."
+            else:
+                # Generate response based on fetched content
+                initial_response = self.llm_handler.generate_response(web_content, search_query, mode=self.mode)
+                
+                # Pass through summarization prompt to extract key information
+                summary_prompt = f"""Based on this information about "{search_query}", provide just the gist - the most important key points in 2-3 sentences:
+
+{initial_response}
+
+Focus on: {search_query}"""
+                
+                response = self.llm_handler.generate_response(summary_prompt, search_query, mode=self.mode)
+            
+            print(f"\n💬 Response:\n")
+            print("-" * 60)
+            print(response)
+            print("-" * 60)
+            
+            # Save notes if in notes mode
+            if self.mode == "notes":
+                save = input("\n💾 Save this note? (y/n): ").strip().lower()
+                if save == 'y':
+                    title = input("Note title (or press Enter for auto): ").strip()
+                    self.notes_manager.save_note(response, title or None)
+            
+            # Speak response
+            if self.use_tts:
+                self.tts_handler.speak(response)
+        
+        except Exception as e:
+            print(f"\n❌ Error performing web search: {e}")
     
     def process_web_search_fallback(self, query: str) -> str:
         """
