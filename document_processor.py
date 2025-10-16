@@ -139,7 +139,9 @@ class DocumentProcessor:
                             print(f"  Page {i+1}: {len(page_text) if page_text else 0} characters")
                     return '\n\n'.join(text)
                 except ImportError:
-                    print("❌ Neither PyMuPDF nor PyPDF2 installed. Install with: pip install PyMuPDF")
+                    print("❌ Neither PyMuPDF nor PyPDF2 installed.")
+                    print("   For image support: pip install PyMuPDF Pillow pytesseract")
+                    print("   For basic PDF support: pip install PyPDF2")
                     return ""
                 except Exception as e:
                     print(f"❌ Error reading PDF with PyPDF2: {e}")
