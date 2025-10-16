@@ -7,6 +7,10 @@ from typing import Optional, Dict
 from urllib.parse import urlparse
 import re
 
+# Constants
+MIN_TITLE_LENGTH = 5  # Minimum characters for a valid search result title
+SNIPPET_MAX_LENGTH = 200  # Maximum characters to display in snippet
+
 class WebBrowser:
     def __init__(self, timeout: int = 10, user_agent: Optional[str] = None):
         self.timeout = timeout
@@ -142,12 +146,16 @@ class WebBrowser:
                 response = self.session.post(search_url, data=params, timeout=self.timeout)
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
-                # If DuckDuckGo fails, try alternative method
-                print(f"⚠️  DuckDuckGo unavailable, trying alternative search method...")
-                # Fall back to a direct GET request with search query
-                search_url = f"https://duckduckgo.com/?q={requests.utils.quote(query)}"
-                response = self.session.get(search_url, timeout=self.timeout)
-                response.raise_for_status()
+                # If DuckDuckGo Lite fails, try the HTML version
+                print(f"⚠️  DuckDuckGo Lite unavailable, trying HTML version...")
+                search_url = "https://html.duckduckgo.com/html/"
+                try:
+                    response = self.session.post(search_url, data=params, timeout=self.timeout)
+                    response.raise_for_status()
+                except requests.exceptions.RequestException:
+                    # If both fail, return empty results
+                    print(f"❌ DuckDuckGo search unavailable")
+                    return []
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
@@ -161,7 +169,9 @@ class WebBrowser:
                 result_divs = soup.find_all('div', class_='result')
                 result_rows = result_divs
             
-            for element in result_rows[:num_results * 2]:  # Get more than needed to filter
+            # Process up to 2x the requested results to allow for filtering invalid entries
+            max_elements_to_check = num_results * 2
+            for element in result_rows[:max_elements_to_check]:
                 try:
                     # Try to extract link and title
                     link_tag = element.find('a', href=True)
@@ -187,11 +197,11 @@ class WebBrowser:
                         # Remove the title from the text to get snippet
                         snippet = all_text.replace(title, '').strip()
                     
-                    if url and title and len(title) > 5:  # Basic validation
+                    if url and title and len(title) > MIN_TITLE_LENGTH:  # Basic validation
                         results.append({
                             'title': title,
                             'url': url,
-                            'snippet': snippet[:200]  # Limit snippet length
+                            'snippet': snippet[:SNIPPET_MAX_LENGTH]  # Limit snippet length
                         })
                         
                         if len(results) >= num_results:
@@ -200,8 +210,7 @@ class WebBrowser:
                     continue
             
             if not results:
-                print(f"⚠️  Could not parse search results from page")
-                # As a fallback, create a mock result suggesting web search is unavailable
+                print(f"⚠️  No search results found or failed to parse search page")
                 return []
             
             print(f"✅ Found {len(results)} web search results")
