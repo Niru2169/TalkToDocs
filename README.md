@@ -7,6 +7,7 @@ A document-based Q&A system with note-taking capabilities using FAISS, Sentence 
 -  **Document Processing**: Load and index documents (TXT, MD, PDF)
 -  **PDF Image Support**: Extract and interpret text from images in PDFs using OCR
 -  **Web Browsing**: Browse and extract content from web pages
+-  **Web Search Fallback**: Automatically searches the web when answers aren't in documents (explicitly indicated)
 -  **Semantic Search**: Find relevant information using FAISS and Sentence Transformers
 -  **Voice Input**: Record questions using Whisper transcription
 -  **AI Responses**: Generate answers using Ollama (Llama 3.2)
@@ -220,6 +221,48 @@ You: back
 
 📚 Returning to document mode...
 ```
+
+### Web Search Fallback Mode
+When the system cannot find relevant information in your documents, it automatically falls back to web search:
+
+```
+You: What is quantum computing?
+
+🔍 Searching document...
+⚠️  No relevant information found in document.
+
+🌐 Falling back to web search...
+🔍 Searching the web for: What is quantum computing?
+✅ Found 5 web search results
+
+📊 Top search results:
+  1. Quantum Computing Explained
+     https://example.com/quantum
+     Introduction to quantum computing principles...
+  2. IBM Quantum Computing
+     https://ibm.com/quantum
+     Learn about quantum computers...
+
+📄 Fetching content from result 1: Quantum Computing Explained...
+✅ Extracted content from: Quantum Computing Explained
+
+🤔 Generating response from web content...
+
+💬 Response:
+🌐 **[Answer from Web Search]**
+
+Quantum computing is a type of computing that uses quantum-mechanical phenomena,
+such as superposition and entanglement, to perform operations on data...
+
+[Full response based on web search results]
+```
+
+**Key Features:**
+- Automatically triggered when document search yields no results or poor quality matches
+- Explicitly indicates when using web search with 🌐 icon
+- Fetches content from top 3-5 most relevant search results
+- Provides source URLs in the response
+- Works seamlessly with both Q&A and Notes modes
 
 ## Troubleshooting
 

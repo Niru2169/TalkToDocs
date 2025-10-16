@@ -7,6 +7,10 @@ from typing import Optional, Dict
 from urllib.parse import urlparse
 import re
 
+# Constants
+MIN_TITLE_LENGTH = 5  # Minimum characters for a valid search result title
+SNIPPET_MAX_LENGTH = 200  # Maximum characters to display in snippet
+
 class WebBrowser:
     def __init__(self, timeout: int = 10, user_agent: Optional[str] = None):
         self.timeout = timeout
@@ -117,10 +121,142 @@ class WebBrowser:
             "keywords": metadata.get("keywords", "")
         }
     
-    def search_web(self, query: str) -> str:
+    def search_web(self, query: str, num_results: int = 5) -> list:
         """
-        Simple web search simulation.
-        Note: This is a placeholder. For real web search, you would need
-        to integrate with a search API (Google Custom Search, Bing, etc.)
+        Perform web search using DuckDuckGo HTML search.
+        Returns a list of search results with title, url, and snippet.
+        
+        Args:
+            query: Search query string
+            num_results: Number of results to return (default 5)
+            
+        Returns:
+            List of dicts with 'title', 'url', and 'snippet' keys
         """
-        return f"Web search for '{query}' would require API integration with search engines like Google Custom Search or Bing."
+        try:
+            print(f"🔍 Searching the web for: {query}")
+            
+            # Try DuckDuckGo Lite first (more reliable)
+            search_url = "https://lite.duckduckgo.com/lite/"
+            params = {
+                'q': query
+            }
+            
+            try:
+                response = self.session.post(search_url, data=params, timeout=self.timeout)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                # If DuckDuckGo Lite fails, try the HTML version
+                print(f"⚠️  DuckDuckGo Lite unavailable, trying HTML version...")
+                search_url = "https://html.duckduckgo.com/html/"
+                try:
+                    response = self.session.post(search_url, data=params, timeout=self.timeout)
+                    response.raise_for_status()
+                except requests.exceptions.RequestException:
+                    # If both fail, return empty results
+                    print(f"❌ DuckDuckGo search unavailable")
+                    return []
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            results = []
+            
+            # Try different possible result selectors
+            # DuckDuckGo Lite uses table rows
+            result_rows = soup.find_all('tr')
+            if not result_rows:
+                # Try regular DuckDuckGo selectors
+                result_divs = soup.find_all('div', class_='result')
+                result_rows = result_divs
+            
+            # Process up to 2x the requested results to allow for filtering invalid entries
+            max_elements_to_check = num_results * 2
+            for element in result_rows[:max_elements_to_check]:
+                try:
+                    # Try to extract link and title
+                    link_tag = element.find('a', href=True)
+                    if not link_tag:
+                        continue
+                    
+                    title = link_tag.get_text().strip()
+                    url = link_tag.get('href', '')
+                    
+                    # Skip if URL is empty or is a DuckDuckGo internal link
+                    if not url or 'duckduckgo.com' in url or url.startswith('/'):
+                        continue
+                    
+                    # Extract snippet (text content near the link)
+                    snippet = ""
+                    # Try to find snippet in next elements
+                    next_td = element.find('td', class_='result-snippet')
+                    if next_td:
+                        snippet = next_td.get_text().strip()
+                    else:
+                        # Try to get any text from the element
+                        all_text = element.get_text().strip()
+                        # Remove the title from the text to get snippet
+                        snippet = all_text.replace(title, '').strip()
+                    
+                    if url and title and len(title) > MIN_TITLE_LENGTH:  # Basic validation
+                        results.append({
+                            'title': title,
+                            'url': url,
+                            'snippet': snippet[:SNIPPET_MAX_LENGTH]  # Limit snippet length
+                        })
+                        
+                        if len(results) >= num_results:
+                            break
+                except Exception as e:
+                    continue
+            
+            if not results:
+                print(f"⚠️  No search results found or failed to parse search page")
+                return []
+            
+            print(f"✅ Found {len(results)} web search results")
+            return results
+            
+        except requests.exceptions.ConnectionError:
+            print(f"❌ Internet connection unavailable. Web search requires internet access.")
+            return []
+        except requests.exceptions.Timeout:
+            print(f"❌ Search request timed out.")
+            return []
+        except Exception as e:
+            print(f"❌ Error performing web search: {e}")
+            return []
+    
+    def fetch_and_extract_from_search_results(self, search_results: list, max_pages: int = 3) -> str:
+        """
+        Fetch and extract text content from search result URLs.
+        
+        Args:
+            search_results: List of search result dictionaries
+            max_pages: Maximum number of pages to fetch
+            
+        Returns:
+            Combined text from all fetched pages
+        """
+        combined_text = ""
+        successful_fetches = 0
+        
+        for i, result in enumerate(search_results[:max_pages]):
+            if successful_fetches >= max_pages:
+                break
+                
+            url = result['url']
+            print(f"\n📄 Fetching content from result {i+1}: {result['title'][:60]}...")
+            
+            web_data = self.browse(url)
+            if web_data and web_data['text']:
+                # Add metadata about the source
+                source_info = f"\n\n=== Source: {result['title']} ===\n"
+                source_info += f"URL: {url}\n"
+                source_info += f"Description: {result['snippet']}\n\n"
+                combined_text += source_info + web_data['text'][:2000] + "\n\n"  # Limit to 2000 chars per page
+                successful_fetches += 1
+            else:
+                print(f"⚠️  Failed to extract content from {url}")
+        
+        print(f"\n✅ Successfully fetched content from {successful_fetches} pages")
+        return combined_text
