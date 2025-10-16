@@ -132,47 +132,87 @@ class WebBrowser:
         try:
             print(f"🔍 Searching the web for: {query}")
             
-            # Use DuckDuckGo HTML search (no API key required)
-            search_url = "https://html.duckduckgo.com/html/"
+            # Try DuckDuckGo Lite first (more reliable)
+            search_url = "https://lite.duckduckgo.com/lite/"
             params = {
                 'q': query
             }
             
-            response = self.session.post(search_url, data=params, timeout=self.timeout)
-            response.raise_for_status()
+            try:
+                response = self.session.post(search_url, data=params, timeout=self.timeout)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                # If DuckDuckGo fails, try alternative method
+                print(f"⚠️  DuckDuckGo unavailable, trying alternative search method...")
+                # Fall back to a direct GET request with search query
+                search_url = f"https://duckduckgo.com/?q={requests.utils.quote(query)}"
+                response = self.session.get(search_url, timeout=self.timeout)
+                response.raise_for_status()
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
             results = []
-            # Find all search result divs
-            result_divs = soup.find_all('div', class_='result')
             
-            for div in result_divs[:num_results]:
+            # Try different possible result selectors
+            # DuckDuckGo Lite uses table rows
+            result_rows = soup.find_all('tr')
+            if not result_rows:
+                # Try regular DuckDuckGo selectors
+                result_divs = soup.find_all('div', class_='result')
+                result_rows = result_divs
+            
+            for element in result_rows[:num_results * 2]:  # Get more than needed to filter
                 try:
-                    # Extract title and URL
-                    title_tag = div.find('a', class_='result__a')
-                    if not title_tag:
+                    # Try to extract link and title
+                    link_tag = element.find('a', href=True)
+                    if not link_tag:
                         continue
                     
-                    title = title_tag.get_text().strip()
-                    url = title_tag.get('href', '')
+                    title = link_tag.get_text().strip()
+                    url = link_tag.get('href', '')
                     
-                    # Extract snippet
-                    snippet_tag = div.find('a', class_='result__snippet')
-                    snippet = snippet_tag.get_text().strip() if snippet_tag else ""
+                    # Skip if URL is empty or is a DuckDuckGo internal link
+                    if not url or 'duckduckgo.com' in url or url.startswith('/'):
+                        continue
                     
-                    if url and title:
+                    # Extract snippet (text content near the link)
+                    snippet = ""
+                    # Try to find snippet in next elements
+                    next_td = element.find('td', class_='result-snippet')
+                    if next_td:
+                        snippet = next_td.get_text().strip()
+                    else:
+                        # Try to get any text from the element
+                        all_text = element.get_text().strip()
+                        # Remove the title from the text to get snippet
+                        snippet = all_text.replace(title, '').strip()
+                    
+                    if url and title and len(title) > 5:  # Basic validation
                         results.append({
                             'title': title,
                             'url': url,
-                            'snippet': snippet
+                            'snippet': snippet[:200]  # Limit snippet length
                         })
+                        
+                        if len(results) >= num_results:
+                            break
                 except Exception as e:
                     continue
+            
+            if not results:
+                print(f"⚠️  Could not parse search results from page")
+                # As a fallback, create a mock result suggesting web search is unavailable
+                return []
             
             print(f"✅ Found {len(results)} web search results")
             return results
             
+        except requests.exceptions.ConnectionError:
+            print(f"❌ Internet connection unavailable. Web search requires internet access.")
+            return []
+        except requests.exceptions.Timeout:
+            print(f"❌ Search request timed out.")
+            return []
         except Exception as e:
             print(f"❌ Error performing web search: {e}")
             return []
