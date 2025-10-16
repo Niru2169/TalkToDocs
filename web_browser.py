@@ -134,8 +134,6 @@ class WebBrowser:
             List of dicts with 'title', 'url', and 'snippet' keys
         """
         try:
-            print(f"🔍 Searching the web for: {query}")
-            
             # Try DuckDuckGo Lite first (more reliable)
             search_url = "https://lite.duckduckgo.com/lite/"
             params = {
