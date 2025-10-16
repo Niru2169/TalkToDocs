@@ -273,43 +273,65 @@ class DocQAApp:
         if web_data['description']:
             print(f"📝 Description: {web_data['description'][:200]}...")
         print("=" * 60)
+        print("\n💡 Type 'back' or 'exit' to return to document mode")
         
-        web_query = input("\n💬 What would you like to know about this page? (or press Enter for summary): ").strip()
-        
-        if not web_query:
-            web_query = "Summarize the main content of this page"
-        
-        # Search web content
-        results = self.doc_processor.search(web_query, top_k=3)
-        
-        if results:
-            context = "\n\n".join([chunk for chunk, dist, meta in results])
-            print(f"\n🤔 Generating response based on web content...")
+        # Loop to handle multiple queries about the web page
+        is_first_query = True
+        while True:
+            if is_first_query:
+                web_query = input("\n💬 What would you like to know about this page? (or press Enter for summary): ").strip()
+            else:
+                web_query = input("\n💬 Ask another question (or type 'back'/'exit' to return): ").strip()
             
-            # Generate response
-            response = self.llm_handler.generate_response(context, web_query, mode=self.mode)
+            # Check if user wants to exit browsing mode
+            if web_query.lower() in ['back', 'exit']:
+                print("📚 Returning to document mode...")
+                break
             
-            print(f"\n{'📋' if self.mode == 'notes' else '💬'} Response:\n")
-            print("-" * 60)
-            print(response)
-            print("-" * 60)
+            # Handle empty input
+            if not web_query:
+                if is_first_query:
+                    # Empty input on first query, provide default summary
+                    web_query = "Summarize the main content of this page"
+                else:
+                    # Empty input after first query, show hint and continue
+                    print("💡 Type a question or 'back' to return to document mode")
+                    continue
             
-            # Save notes if requested
-            if self.mode == "notes":
-                save = input("\n💾 Save this note? (y/n): ").strip().lower()
-                if save == 'y':
-                    title = input("Note title (or press Enter for auto): ").strip()
-                    if not title:
-                        title = web_data['title']
-                    self.notes_manager.save_note(response, title)
+            # Mark that we've processed the first query
+            is_first_query = False
             
-            # Speak response
-            if self.use_tts:
-                self.tts_handler.speak(response)
-        else:
-            print("\n❌ Couldn't extract information from web content")
+            # Search web content
+            results = self.doc_processor.search(web_query, top_k=3)
+            
+            if results:
+                context = "\n\n".join([chunk for chunk, dist, meta in results])
+                print(f"\n🤔 Generating response based on web content...")
+                
+                # Generate response
+                response = self.llm_handler.generate_response(context, web_query, mode=self.mode)
+                
+                print(f"\n{'📋' if self.mode == 'notes' else '💬'} Response:\n")
+                print("-" * 60)
+                print(response)
+                print("-" * 60)
+                
+                # Save notes if requested
+                if self.mode == "notes":
+                    save = input("\n💾 Save this note? (y/n): ").strip().lower()
+                    if save == 'y':
+                        title = input("Note title (or press Enter for auto): ").strip()
+                        if not title:
+                            title = web_data['title']
+                        self.notes_manager.save_note(response, title)
+                
+                # Speak response
+                if self.use_tts:
+                    self.tts_handler.speak(response)
+            else:
+                print("\n❌ Couldn't extract information from web content")
         
-        # Restore original index
+        # Restore original index when exiting browsing mode
         self.doc_processor.chunks = original_chunks
         self.doc_processor.metadata = original_metadata
         self.doc_processor.index = original_index
