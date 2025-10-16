@@ -94,8 +94,9 @@ Switch modes:
 - `mode qa` - Switch to Q&A mode
 - `mode notes` - Switch to notes mode
 - `list` - List all saved notes
-- Enter a URL (e.g., `https://example.com`) - Browse and analyze web content
+- Enter a URL (e.g., `https://example.com`) - Browse and analyze web content (multiple queries supported)
 - `web: <url>` or `browse: <url>` - Explicitly browse a URL
+- `back` or `exit` - (In web browsing mode) Return to document mode
 - `quit` or `exit` - Exit the application
 
 ## Architecture (Django-Ready)
@@ -208,6 +209,16 @@ You: https://en.wikipedia.org/wiki/Artificial_intelligence
 You: What is the definition of artificial intelligence?
 
 Response: Artificial intelligence (AI) is intelligence demonstrated by machines...
+
+💬 Ask another question (or type 'back'/'exit' to return):
+You: What are some applications of AI?
+
+Response: AI has numerous applications including natural language processing, computer vision...
+
+💬 Ask another question (or type 'back'/'exit' to return):
+You: back
+
+📚 Returning to document mode...
 ```
 
 ## Troubleshooting
