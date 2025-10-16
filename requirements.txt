@@ -9,9 +9,5 @@ piper-tts
 beautifulsoup4
 lxml
 keyboard
-
-# Optional dependencies
-PyPDF2  # For basic PDF text support (fallback)
-PyMuPDF  # For advanced PDF support with image extraction
-Pillow  # For image processing
-pytesseract  # For OCR on images in PDFs
+PyPDF2  # For PDF support
+pytesseract # For OCR
