@@ -557,14 +557,29 @@ def main():
     docs_folder = "put-your-documents-here"
     if os.path.exists(docs_folder):
         doc_files = []
-        for ext in ['*.txt', '*.md', '*.pdf']:
-            doc_files.extend(Path(docs_folder).glob(ext))
+        
+        # Search for documents recursively, including in symlinked folders
+        docs_path = Path(docs_folder)
+        
+        # Define supported extensions
+        supported_exts = ['.txt', '.md', '.pdf']
+        
+        # Recursively search for documents
+        # Using rglob to find files recursively, including in symlinked directories
+        for ext in supported_exts:
+            doc_files.extend(docs_path.rglob(f'*{ext}'))
+        
+        # Convert to list of strings and remove duplicates while preserving order
+        doc_files = list(dict.fromkeys(str(doc) for doc in doc_files))
+        doc_files.sort()  # Sort for consistent ordering
         
         if doc_files:
             print("\n" + "=" * 60)
-            print("📚 Found documents in 'put-your-documents-here' folder:")
+            print("📚 Found documents in 'put-your-documents-here' folder (including subdirectories):")
             for i, doc in enumerate(doc_files, 1):
-                print(f"  {i}. {doc.name}")
+                # Show relative path for clarity
+                rel_path = Path(doc).relative_to(docs_path)
+                print(f"  {i}. {rel_path}")
             print(f"  {len(doc_files) + 1}. ALL documents (index all files)")
             print("  0. Enter custom path")
             
@@ -577,20 +592,20 @@ def main():
                         break
                     elif choice == str(len(doc_files) + 1):
                         # Select all documents
-                        selected_docs = [str(doc) for doc in doc_files]
+                        selected_docs = doc_files
                         print(f"\n✅ Selected all {len(selected_docs)} documents")
                         break
                     else:
                         idx = int(choice) - 1
                         if 0 <= idx < len(doc_files):
-                            selected_docs = [str(doc_files[idx])]
+                            selected_docs = [doc_files[idx]]
                             break
                         else:
                             print("❌ Invalid choice. Try again.")
                 except ValueError:
                     print("❌ Please enter a number.")
         else:
-            print(f"\n📁 No documents found in '{docs_folder}' folder.")
+            print(f"\n📁 No documents found in '{docs_folder}' folder or its subdirectories.")
             doc_path = input("📄 Enter document path (txt, md, or pdf): ").strip()
             selected_docs = [doc_path]
     else:

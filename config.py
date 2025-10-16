@@ -11,7 +11,7 @@ CHANNELS = 1
 # Model paths and settings
 SENTENCE_TRANSFORMER_MODEL = "all-MiniLM-L6-v2"
 WHISPER_MODEL = "base"  # or "small", "medium", "large"
-OLLAMA_MODEL = "gemma3:1b"  # Use your installed model
+OLLAMA_MODEL = "gemma3:4b"  # Use your installed model
 
 # FAISS settings
 FAISS_INDEX_PATH = "document_index.faiss"

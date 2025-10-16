@@ -51,8 +51,7 @@ Download and install from: https://ollama.ai
 Then pull a model:
 ```powershell
 ollama pull gemma3:1b
-# OR use your installed model, e.g.:
-# ollama pull gemma3:1b
+# OR use your installed model
 ```
 
 Start Ollama:
