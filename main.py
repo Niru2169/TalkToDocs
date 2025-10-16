@@ -36,6 +36,7 @@ class DocQAApp:
         self.recording = False
         self.mode = "qa"  # "qa" or "notes"
         self.use_tts = True  # Whether to use TTS for responses
+        self.voice_mode = False  # Whether currently in audio/voice mode
     
     def get_file_hash(self, file_paths):
         """Generate a hash for the given file(s) to track what was indexed"""
@@ -211,7 +212,7 @@ class DocQAApp:
         print(f"🤔 Generating response...")
         
         # Generate response from document
-        response = self.llm_handler.generate_response(context, query, mode=self.mode, source="document")
+        response = self.llm_handler.generate_response(context, query, mode=self.mode, source="document", voice_mode=self.voice_mode)
         
         print(f"\n{'📋' if self.mode == 'notes' else '💬'} Response:\n")
         print("-" * 60)
@@ -261,7 +262,7 @@ class DocQAApp:
                 response = "\n".join(snippets) if snippets else "Could not extract content from search results."
             else:
                 # Generate response based on fetched content
-                initial_response = self.llm_handler.generate_response(web_content, search_query, mode=self.mode)
+                initial_response = self.llm_handler.generate_response(web_content, search_query, mode=self.mode, voice_mode=self.voice_mode)
                 
                 # Pass through summarization prompt to extract key information
                 summary_prompt = f"""Based on this information about "{search_query}", provide just the gist - the most important key points in 2-3 sentences:
@@ -270,7 +271,7 @@ class DocQAApp:
 
 Focus on: {search_query}"""
                 
-                response = self.llm_handler.generate_response(summary_prompt, search_query, mode=self.mode)
+                response = self.llm_handler.generate_response(summary_prompt, search_query, mode=self.mode, voice_mode=self.voice_mode)
             
             print(f"\n💬 Response:\n")
             print("-" * 60)
@@ -489,6 +490,9 @@ Focus on: {search_query}"""
             self.run_interactive()
             return
         
+        # Enable voice mode for casual responses
+        self.voice_mode = True
+        
         print("\n" + "=" * 60)
         print("📚 Document Q&A System - Ready!")
         print("=" * 60)
@@ -544,6 +548,10 @@ Focus on: {search_query}"""
     
     def run_interactive(self):
         """Run interactive text-based interface"""
+        # Disable voice mode for text interface
+        self.use_tts = False
+        self.voice_mode = False
+        
         print("\n" + "=" * 60)
         print("📚 Document Q&A System - Text Mode")
         print("=" * 60)

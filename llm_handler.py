@@ -19,7 +19,7 @@ class LLMHandler:
         except:
             return False
     
-    def generate_response(self, context: str, query: str, mode: str = "qa", source: str = "document") -> str:
+    def generate_response(self, context: str, query: str, mode: str = "qa", source: str = "document", voice_mode: bool = False) -> str:
         """Generate response based on context and query
         
         Args:
@@ -27,6 +27,7 @@ class LLMHandler:
             query: The user's question or request
             mode: Response mode - "qa" or "notes"
             source: Source of context - "document" or "web"
+            voice_mode: If True, optimize for audio output (shorter, casual, natural)
         
         Returns:
             Generated response string
@@ -47,6 +48,13 @@ class LLMHandler:
                          f"Question: {query}\n\n"
                          f"Answer concisely and accurately based only on the provided context. "
                          f"If the answer is not in the context, say so.")
+            
+            # Add voice mode instructions for casual, brief responses
+            if voice_mode:
+                prompt += ("\n\n📢 VOICE MODE: Keep your answer SHORT and CASUAL. "
+                          "Use natural, conversational language like you're talking to a friend. "
+                          "Skip unnecessary details and get straight to the point. "
+                          "Aim for 2-3 sentences max, unless more detail is absolutely needed.")
 
         elif mode == "notes":
             if source == "web":
